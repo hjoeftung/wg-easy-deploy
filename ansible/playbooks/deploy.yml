@@ -1,0 +1,66 @@
+---
+- name: Deploy wg-easy with Traefik
+  hosts: webservers
+  become: false
+  remote_user: "{{ deploy_user }}"
+  tasks:
+    - name: Copy traefik docker compose
+      copy:
+        src: "{{ traefik_source_dir }}/docker-compose.yml"
+        dest: "{{ traefik_dest_compose_dir }}/docker-compose.yml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+
+    - name: Template traefik.yml
+      template:
+        src: "{{ traefik_source_dir }}/traefik.yml.j2"
+        dest: "{{ traefik_dest_volume_dir }}/traefik.yml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+
+    - name: Template traefik dynamic
+      template:
+        src: "{{ traefik_source_dir }}/traefik_dynamic.yml.j2"
+        dest: "{{ traefik_dest_volume_dir }}/traefik_dynamic.yml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+
+    - name: Copy traefik users file
+      copy:
+        src: "{{ traefik_source_dir }}/traefik_users"
+        dest: "{{ traefik_dest_volume_dir }}/traefik_users"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: "0640"
+  
+    - name: Copy wg_easy docker compose
+      copy:
+        src: "{{ wg_easy_source_dir }}/docker-compose.yml"
+        dest: "{{ wg_easy_compose_dir }}/docker-compose.yml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+
+    - name: Stop wg-easy
+      command: docker compose down
+      args:
+        chdir: "{{ wg_easy_compose_dir }}"
+
+    - name: Start wg-easy
+      command: docker compose up -d
+      args:
+        chdir: "{{ wg_easy_compose_dir }}"
+
+    - name: Create traefik network
+      docker_network:
+        name: traefik
+        state: present
+
+    - name: Stop Traefik
+      command: docker compose down
+      args:
+        chdir: "{{ traefik_dest_compose_dir }}"
+
+    - name: Start Traefik
+      command: docker compose up -d
+      args:
+        chdir: "{{ traefik_dest_compose_dir }}"

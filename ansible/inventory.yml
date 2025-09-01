@@ -1,0 +1,10 @@
+webservers:
+  hosts:
+    "{{ vm_ip }}":
+  vars:
+    base_project_dir: "{{ inventory_dir }}/.."
+    wg_easy_source_dir: "{{ base_project_dir }}/wg_easy"
+    wg_easy_compose_dir: /etc/docker/containers/wg-easy
+    traefik_source_dir: "{{ base_project_dir }}/traefik"
+    traefik_dest_volume_dir: /etc/docker/volumes/traefik
+    traefik_dest_compose_dir: /etc/docker/containers/traefik

@@ -1,0 +1,41 @@
+http:
+    middlewares:
+        services:
+            basicAuth:
+                usersFile: /traefik_users
+        compress:
+            compress: {}
+        hsts:
+            headers:
+                stsSeconds: 2592000
+    routers:
+        api:
+            rule: Host(`traefik.{{ site_host }}`)
+            entrypoints:
+                - websecure
+            middlewares:
+                - services
+            service: api@internal
+        wg-easy:
+            rule: Host(`vpn.{{ site_host }}`)
+            entrypoints:
+                - websecure
+            middlewares:
+                - services
+            service: wg-easy
+            tls:
+                certResolver: letsencrypt
+    services:
+        wg-easy:
+            loadBalancer:
+                servers:
+                    - url: "http://wg-easy:51821"
+
+tls:  
+    options:
+        default:
+            cipherSuites:
+                - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+                - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+            sniStrict: true

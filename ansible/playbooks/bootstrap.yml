@@ -1,0 +1,55 @@
+- name: Provision VM for wg-easy deployment
+  hosts: webservers
+  become: true
+  remote_user: root
+  vars:
+    admin_user_pub_key_file: "{{ lookup('file', '{{ admin_user_pub_key_path }}') }}"
+  tasks:
+    - name: Ensure new user exists
+      user:
+        name: "{{ admin_user }}"
+        groups: sudo
+        shell: /bin/bash
+        state: present
+
+    - name: Configure passwordless sudo for user
+      copy:
+        dest: "/etc/sudoers.d/{{ admin_user }}"
+        content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL"
+        owner: root
+        groups: root
+        mode: '0440'
+
+    - name: Ensure .ssh directory exists
+      file:
+        path: "/home/{{ admin_user }}/.ssh"
+        state: directory
+        owner: "{{ admin_user }}"
+        groups: "{{ admin_user }}"
+        mode: '0700'
+
+    - name: Add authorized key for new user
+      authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ admin_user_pub_key_file }}"
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+        backup: yes
+
+    - name: Disable password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+        backup: yes
+
+    - name: Restart SSH service
+      service:
+        name: sshd
+        state: restarted
