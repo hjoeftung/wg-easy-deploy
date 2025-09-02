@@ -1,40 +1,43 @@
-- name: Provision VM for wg-easy deployment
-  hosts: webservers
+---
+#  Run this playbook on a fresh VM with root user having password-base SSH access to VM
+# to create admin user and deploy user and disable password SSH authentication
+- name: Create admin user and disable password authentication
+  hosts: all
   become: true
   remote_user: root
-  vars:
-    admin_user_pub_key_file: "{{ lookup('file', '{{ admin_user_pub_key_path }}') }}"
+  roles:
+  - geerlingguy.docker
   tasks:
     - name: Ensure new user exists
-      user:
+      ansible.builtin.user:
         name: "{{ admin_user }}"
-        groups: sudo
+        group: sudo
         shell: /bin/bash
         state: present
 
     - name: Configure passwordless sudo for user
-      copy:
+      ansible.builtin.copy:
         dest: "/etc/sudoers.d/{{ admin_user }}"
         content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL"
         owner: root
-        groups: root
+        group: root
         mode: '0440'
 
     - name: Ensure .ssh directory exists
-      file:
+      ansible.builtin.file:
         path: "/home/{{ admin_user }}/.ssh"
         state: directory
         owner: "{{ admin_user }}"
-        groups: "{{ admin_user }}"
+        group: "{{ admin_user }}"
         mode: '0700'
 
     - name: Add authorized key for new user
-      authorized_key:
+      ansible.builtin.authorized_key:
         user: "{{ admin_user }}"
-        key: "{{ admin_user_pub_key_file }}"
+        key: "{{ admin_user_pub_key_path }}"
 
     - name: Disable root SSH login
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^PermitRootLogin'
         line: 'PermitRootLogin no'
@@ -42,7 +45,7 @@
         backup: yes
 
     - name: Disable password authentication
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^PasswordAuthentication'
         line: 'PasswordAuthentication no'
@@ -50,6 +53,25 @@
         backup: yes
 
     - name: Restart SSH service
-      service:
+      ansible.builtin.service:
         name: sshd
         state: restarted
+
+    - name: Ensure deploy user's group is created
+      ansible.builtin.group:
+        name: "{{ deploy_user }}"
+        state: present
+
+    - name: Ensure the deploy user is created
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        groups:
+          - "{{ deploy_user }}"
+          - docker
+        shell: /bin/bash
+        state: present
+
+    - name: Add the public key to the deploy user's authorized_keys
+      ansible.builtin.authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ deploy_user_pub_key_path }}"

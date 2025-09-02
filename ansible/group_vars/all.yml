@@ -1,0 +1,2 @@
+compose_dir: /etc/docker/containers/wg-easy
+traefik_dest_volume_dir: /etc/docker/volumes/traefik

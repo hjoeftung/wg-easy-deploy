@@ -1,0 +1,18 @@
+---
+- hosts: all
+  roles:
+  - role: common
+  remote_user: "{{ deploy_user }}"
+  become: false
+
+- hosts: eu
+  roles:
+  - role: eu
+  remote_user: "{{ admin_user }}"
+  become: true
+
+- hosts: ru
+  roles:
+  - role: ru
+  remote_user: "{{ deploy_user }}"
+  become: false

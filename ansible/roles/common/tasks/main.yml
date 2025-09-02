@@ -1,0 +1,67 @@
+---
+- name: Ensure traefik directory
+  ansible.builtin.file:
+    path: "{{ traefik_dest_volume_dir }}"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0700"
+    state: directory
+
+- name: Create acme.json
+  ansible.builtin.file:
+    path: "{{ traefik_dest_volume_dir }}/acme.json"
+    owner: "{{ deploy_user }}"
+    mode: "0600"
+    state: "touch"
+
+- name: Ensure wg-easy directory
+  ansible.builtin.file:
+    path: "{{ compose_dir }}"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0700"
+    state: directory
+
+- name: Template traefik.yml
+  ansible.builtin.template:
+    src: "{{ common_templates_dir }}/traefik.yml.j2"
+    dest: "{{ traefik_dest_volume_dir }}/traefik.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Template traefik dynamic
+  ansible.builtin.template:
+    src: "{{ common_templates_dir }}/traefik_dynamic.yml.j2"
+    dest: "{{ traefik_dest_volume_dir }}/traefik_dynamic.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Copy traefik users file
+  ansible.builtin.copy:
+    src: "{{ common_files_dir }}/traefik_users"
+    dest: "{{ traefik_dest_volume_dir }}/traefik_users"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0640"
+
+- name: Copy docker compose
+  ansible.builtin.copy:
+    src: "{{ common_files_dir }}/docker-compose.yml"
+    dest: "{{ compose_dir }}/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Create traefik network
+  community.docker.docker_network:
+    name: traefik
+    state: present
+
+- name: Down docker compose
+  ansible.builtin.command: docker compose down
+  args:
+    chdir: "{{ compose_dir }}"
+
+- name: Up docker compose
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ compose_dir }}"
